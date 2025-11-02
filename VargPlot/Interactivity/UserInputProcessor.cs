@@ -91,6 +91,9 @@ public class UserInputProcessor
 
         // click events
         new UserActionResponses.MouseWheelZoom(StandardKeys.Shift, StandardKeys.Control),
+
+        // my events
+       
     ];
 
     /// <summary>

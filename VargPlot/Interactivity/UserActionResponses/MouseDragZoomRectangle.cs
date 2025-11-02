@@ -57,7 +57,7 @@ public class MouseDragZoomRectangle(MouseButton button) : IUserActionResponse
             bool isSecondaryButtonAndKey = buttonAction.Button == SecondaryMouseButton && keys.IsPressed(SecondaryKey);
             if (isPrimaryButton || isSecondaryButtonAndKey)
             {
-                Plot? plotUnderMouse = plotControl.GetPlotAtPixel(buttonAction.Pixel);
+                Plot? plotUnderMouse = plotControl.Plot;
                 if (plotUnderMouse is not null)
                 {
                     MouseDownPixel = buttonAction.Pixel;
