@@ -26,6 +26,30 @@ public class AutoScrollingProcessor
     private const float _smoothTimeSec = 0.01f; // ~100 ms response (tweak)
     private const float _maxSpeedPxSec = 5000f; // clamp excessive speeds (tweak)
 
+    public void TryDampAutoScroll()
+    {
+        if (_avaPlot.Bounds.Width <= 0 || _avaPlot.PlotVM._plot.SampleTimes.Count == 0) 
+            return;
+
+        float xScale = _avaPlot.UserInputProc.XScale;
+        float minVisibleX = _avaPlot.PanX / xScale;
+        float maxVisibleX = minVisibleX + (float)_avaPlot.Bounds.Width / xScale;
+
+        const float padding = 50;
+
+        float scrollThreshold = maxVisibleX - padding / xScale;
+        float lastDataX = _avaPlot.PlotVM._plot.SampleTimes.Last();
+
+        if (lastDataX > scrollThreshold)
+        {
+            float scrollAmount = lastDataX - scrollThreshold;
+
+            float newMinVisibleX = minVisibleX + scrollAmount;
+
+            _avaPlot.UserInputProc._panOffset = new(-newMinVisibleX * xScale, _avaPlot.PanY);
+        }
+    }
+
     public void TryAutoScroll()
     {
         if (_avaPlot.Bounds.Width <= 0) return;

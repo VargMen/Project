@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -8,8 +8,8 @@ namespace VargPlot
 {
     public partial class MainWindow : Window
     {
-        private const int SliderCount = 10;
-        private const float SliderWidth = 45;
+        private const int SliderCount = 9;
+        private const float SliderWidth = 50;
         private const float SliderHeight = 25;
         private const float SidePadding = 30;
         private const float DiamondSize = 20;
@@ -26,6 +26,20 @@ namespace VargPlot
 
         private readonly List<Border> _rects = new();
         private readonly List<Border> _diamonds = new();
+        private readonly List<Label> _sliderLabels = new();
+
+        private readonly List<string> _sliderLabelTexts = new()
+        {
+            "ВДХ",
+            "НДЧ",
+            "ШГР",
+            "ФПГ",
+            "ТРМ",
+            "МКФ",
+            "ЕКГ",
+            "ТМП",
+            "ЖВМ",
+        };
 
         private MainViewModel VM => (MainViewModel)DataContext!;
         
@@ -79,6 +93,31 @@ namespace VargPlot
                 SliderCanvas.Children.Add(rect);
                 _rects.Add(rect);
 
+                // === Label (overlayed on top of rectangle) ===
+                var lbl = new Label
+                {
+                    Content = _sliderLabelTexts[i],
+                    Foreground = Brushes.White,
+                    FontWeight = FontWeight.SemiBold,
+                    Width = SliderWidth,
+                    Height = SliderHeight,                   // same height → perfect centering
+                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    Tag = i
+                };
+
+                lbl.PointerPressed += Slider_PointerPressed;
+                lbl.PointerMoved += Slider_PointerMoved;
+                lbl.PointerReleased += Slider_PointerReleased;
+
+                // put it above the rectangle
+                //Canvas.SetZIndex(lbl, 100);
+
+                PositionLabel(i, rect, lbl);
+
+                SliderCanvas.Children.Add(lbl);
+                _sliderLabels.Add(lbl);
+
                 // === Diamond (rhombus handle) ===
                 var diamond = new Border
                 {
@@ -107,24 +146,36 @@ namespace VargPlot
             double x = Canvas.GetLeft(rect);
             double centerY = VM.plotVM.GetWaveformOffset(i);
 
-            Canvas.SetLeft(diamond, x + (SliderWidth - DiamondSize) / 2.0);
+            Canvas.SetLeft(diamond, x + (SliderWidth - DiamondSize) / 2.0 + 7);
             Canvas.SetTop(diamond, centerY - DiamondSize / 2.0 + centeringAxisOffset);
         }
 
         // ===== Rectangle drag (moves slider) =====
         private void Slider_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            if (sender is not Border rect) return;
-            if (!e.GetCurrentPoint(rect).Properties.IsLeftButtonPressed) return;
-            if (_dragIndex >= 0) return; // ignore if diamond is being dragged
+            if (sender is Border rect)
+            {
+                if (!e.GetCurrentPoint(rect).Properties.IsLeftButtonPressed) return;
+                if (_dragIndex >= 0) return; // ignore if diamond is being dragged
 
-            _dragIndex = (int)rect.Tag!;
-            e.Pointer.Capture(rect);
+                _dragIndex = (int)rect.Tag!;
+                e.Pointer.Capture(rect);
 
-            var p = e.GetPosition(SliderCanvas);
-            _dragOffsetY = (float)(p.Y - Canvas.GetTop(rect));
+                var p = e.GetPosition(SliderCanvas);
+                _dragOffsetY = (float)(p.Y - Canvas.GetTop(rect));
+            }
+            else if (sender is Label text)
+            {
+                if (!e.GetCurrentPoint(text).Properties.IsLeftButtonPressed) return;
+                if (_dragIndex >= 0) return; // ignore if diamond is being dragged
 
-            e.Handled = true;
+                _dragIndex = (int)text.Tag!;
+                e.Pointer.Capture(text);
+
+                var p = e.GetPosition(SliderCanvas);
+                _dragOffsetY = (float)(p.Y - Canvas.GetTop(text));
+            }
+                e.Handled = true;
         }
 
         private void Slider_PointerMoved(object? sender, PointerEventArgs e)
@@ -141,7 +192,9 @@ namespace VargPlot
 
             // keep diamond centered on rect center
             CenterDiamond(_dragIndex, rect, _diamonds[_dragIndex]);
-            
+
+            PositionLabel(_dragIndex);
+
             e.Handled = true;
         }
 
@@ -189,6 +242,22 @@ namespace VargPlot
             e.Pointer.Capture(null);
             _dragIndex = -1;
             e.Handled = true;
+        }
+
+        private void PositionLabel(int i, Border rect, Label lbl)
+        {
+            // same X and Y as rect → label sits on top of it
+            double left = Canvas.GetLeft(rect);
+            double top = Canvas.GetTop(rect);
+            Canvas.SetLeft(lbl, left - 6);
+            Canvas.SetTop(lbl, top);
+        }
+
+        private void PositionLabel(int i)
+        {
+            var rect = _rects[i];
+            var lbl = _sliderLabels[i];
+            PositionLabel(i, rect, lbl);
         }
     }
 }

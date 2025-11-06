@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
+using System.Collections.Generic;
 using System.Diagnostics;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -103,6 +104,8 @@ public class UserInputProcessor
 
             _xScale = (float)newScale;
             _panOffset = new Point(newPanX, _panOffset.Y);
+
+            _avaPlot.UserInputProc._panOffset = new Point(newPanX, _avaPlot.PanY);
         }
 
         ClampPanX();

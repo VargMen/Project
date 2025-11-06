@@ -13,7 +13,7 @@ public class TimeLinesRenderer
 {
     public static void RenderTimeLines(DrawingContext context, float minX, float maxX, int timeInterval, float xScale, float panY, float height)
     {
-        List<int> timeLabelValues = FindDivisibleIntegers(minX, maxX, timeInterval);
+        List<int> timeLabelValues = MathUtils.FindDivisibleIntegers(minX, maxX, timeInterval);
 
         foreach (int val in timeLabelValues)
         {
@@ -47,21 +47,5 @@ public class TimeLinesRenderer
         int seconds = totalSeconds % 60;
 
         return $"{minutes:D2}:{seconds:D2}";
-    }
-
-    static List<int> FindDivisibleIntegers(float minVal, float maxVal, int divisor)
-    {
-        var result = new List<int>();
-
-        int start = (int)Math.Ceiling(minVal);
-        int end = (int)Math.Floor(maxVal);
-
-        // First number divisible by divisor and >= start
-        int firstDivisible = ((start + divisor - 1) / divisor) * divisor;
-
-        for (int val = firstDivisible; val <= end; val += divisor)
-            result.Add(val);
-
-        return result;
     }
 }

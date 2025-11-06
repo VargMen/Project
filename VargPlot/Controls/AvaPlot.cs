@@ -10,6 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
+using VargPlot.Services;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace VargPlot;
 
@@ -90,20 +93,22 @@ public class AvaPlot : Avalonia.Controls.Control
                 return;
 
             float minViewTime = PlotVM._plot.SampleTimes[start];
-            float maxViewTime = PlotVM._plot.SampleTimes[end - 1];
+            float maxViewTime = PlotVM._plot.SampleTimes[end];
             float rightPx = (float)(-PanX + Bounds.Width * XScale);
+            Debug.WriteLine(XScale);
 
-            PlotRenderer.RenderPlot(context, PlotVM._plot, start, end - 1, XScale, rightPx);
+            PlotRenderer.RenderPlot(context, PlotVM._plot, start, end, XScale, rightPx);
             PlotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(PlotVM._plot.SampleTimes.Last(), XScale);
-            TimeLinesRenderer.RenderTimeLines(context, minViewTime, maxViewTime, 5, XScale, PanY, (float)Bounds.Height);
+            TimeLinesRenderer.RenderTimeLines(context, minViewTime, maxViewTime, GetTimeStep(XScale), XScale, PanY, (float)Bounds.Height);
             TimeRectsRenderer.RenderTimeRects(context, PlotVM._timeRects, minViewTime, maxViewTime, XScale, PanY, (float)Bounds.Height);
+            NumbersRenderer.RenderNumbers(context, minViewTime, maxViewTime, 1, XScale, PanY, (float)Bounds.Height);
         }
     }
 
     private void OnUiTick()
     {
         if (UserInputProc._isAutoScrolling && !UserInputProc._isPanning)
-            AutoScrollProc.TryAutoScroll();
+            AutoScrollProc.TryDampAutoScroll();
 
         Refresh();
     }
@@ -170,14 +175,12 @@ public class AvaPlot : Avalonia.Controls.Control
     private static (int start, int end) GetVisibleIndexRange(Plot plot, float minWorldX, float maxWorldX)
     {
         int start = LowerBound(plot.SampleTimes, minWorldX);
-        int endExclusive = UpperBound(plot.SampleTimes, maxWorldX) + 1;
+        int end = UpperBound(plot.SampleTimes, maxWorldX);
 
         start = Math.Clamp(start, 0, plot.SampleTimes.Count - 1);
-        endExclusive = Math.Clamp(endExclusive, 0, plot.SampleTimes.Count);
+        end = Math.Min(plot.SampleTimes.Count - 1, end - 1);
 
-        //int end = endExclusive - 1;
-        if (endExclusive < start) return (0, 0);
-        return (start, endExclusive);
+        return (start, end);
     }
 
     private static int LowerBound(List<float> vals, float x)
@@ -233,6 +236,20 @@ public class AvaPlot : Avalonia.Controls.Control
             Stopwatch.Start();
             DataCreatorTimer.Start();
         }
+    }
+
+    public static int GetTimeStep(float xScale)
+    {
+        // Handle negative values if needed
+        if (xScale < 0)
+            return 10; // Or throw an exception based on your requirements
+
+        if (xScale >= 200)
+            return 2;
+        else if (xScale >= 50)
+            return 5;
+        else
+            return 10;
     }
 }
 
