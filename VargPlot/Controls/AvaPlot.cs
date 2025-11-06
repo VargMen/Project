@@ -16,8 +16,8 @@ namespace VargPlot;
 public class AvaPlot : Avalonia.Controls.Control
 {
     private bool LoadFileMode = false;
-    private Task? _loadTask;
-    private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _fileCts;
+    private Task? _fileTask;
 
     public PlotViewModel PlotVM { get; set; }
     private List<SineGenerator> _sineGenerators { get; set; }
@@ -27,7 +27,7 @@ public class AvaPlot : Avalonia.Controls.Control
     public SessionFileRecorder? _recorder;
 
     private DispatcherTimer UiTimer;
-    private System.Timers.Timer DataTimer;
+    private System.Timers.Timer DataCreatorTimer;
 
     public Stopwatch Stopwatch;
 
@@ -61,17 +61,17 @@ public class AvaPlot : Avalonia.Controls.Control
             DispatcherPriority.Render,
             (_, _) => OnUiTick());
 
-        DataTimer = new System.Timers.Timer(50) { AutoReset = true };
-        DataTimer.Elapsed += (_, __) => OnDataTick();
+        DataCreatorTimer = new System.Timers.Timer(50) { AutoReset = true };
+        DataCreatorTimer.Elapsed += (_, __) => OnDataCreatorTick();
 
         Pending = new();
-        Stopwatch = Stopwatch.StartNew();
-        DataTimer.Start();
+        Stopwatch = new Stopwatch();
         UiTimer.Start();
 
-        EnableFileMode("PlotData/session_20251106_043146.csv");
-
-        //_recorder = new SessionFileRecorder("PlotData");
+        if (LoadFileMode)
+            StartFileMode("PlotData/session_20251106_051050.csv");
+        else
+            _recorder = new SessionFileRecorder("PlotData");
         Refresh();
     }
 
@@ -93,7 +93,7 @@ public class AvaPlot : Avalonia.Controls.Control
             float maxViewTime = PlotVM._plot.SampleTimes[end - 1];
             float rightPx = (float)(-PanX + Bounds.Width * XScale);
 
-            PlotRenderer.RenderPlot(context, PlotVM._plot, start, end, XScale, rightPx);
+            PlotRenderer.RenderPlot(context, PlotVM._plot, start, end - 1, XScale, rightPx);
             PlotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(PlotVM._plot.SampleTimes.Last(), XScale);
             TimeLinesRenderer.RenderTimeLines(context, minViewTime, maxViewTime, 5, XScale, PanY, (float)Bounds.Height);
             TimeRectsRenderer.RenderTimeRects(context, PlotVM._timeRects, minViewTime, maxViewTime, XScale, PanY, (float)Bounds.Height);
@@ -102,27 +102,17 @@ public class AvaPlot : Avalonia.Controls.Control
 
     private void OnUiTick()
     {
-        if (Pending.TryDequeue(out var chunk))
-        {
-            _recorder?.RecordChunk(chunk.Time, chunk.Values);
-            PlotVM._plot.AppendChunk(chunk.Time, chunk.Values);
-            
-            if (UserInputProc._isAutoScrolling && !UserInputProc._isPanning)
-                AutoScrollProc.TryAutoScroll();
-        }
+        if (UserInputProc._isAutoScrolling && !UserInputProc._isPanning)
+            AutoScrollProc.TryAutoScroll();
 
         Refresh();
     }
 
-    private void OnDataTick()
+    private void OnDataCreatorTick()
     {
-        if (LoadFileMode)
+        if (!LoadFileMode)
         {
-            return;
-        }
-        else
-        {
-            double t = Stopwatch.Elapsed.TotalSeconds;
+            float t = (float)Stopwatch.Elapsed.TotalSeconds;
             List<float> values = new List<float>(PlotVM._plot.Waveforms.Count);
 
             foreach (var sineGenerator in _sineGenerators)
@@ -130,13 +120,15 @@ public class AvaPlot : Avalonia.Controls.Control
                 values.Add(sineGenerator.GetValue(t));
             }
 
-            var chunk = new Chunk()
-            {
-                Time = (float)t,
-                Values = values
-            };
+            var fakeChunk = new Chunk(t, values);
 
-            Pending.Enqueue(chunk);
+            Pending.Enqueue(fakeChunk);
+        }
+
+        if (!LoadFileMode && Pending.TryDequeue(out var chunk))
+        {
+            _recorder?.RecordChunk(chunk);
+            PlotVM._plot.AppendChunk(chunk);
         }
     }
 
@@ -212,23 +204,35 @@ public class AvaPlot : Avalonia.Controls.Control
         return lo - 1;
     }
 
-    public void EnableFileMode(string path)
+    public void StartFileMode(string path)
     {
-        if (LoadFileMode) return;
-        LoadFileMode = true;
+        // cancel any previous run
+        _fileCts?.Cancel();
+        _fileCts = new CancellationTokenSource();
 
-        _loadCts = new CancellationTokenSource();
-        _loadTask = SessionFileLoader.Start(path, Pending, _loadCts.Token);
+        // stream rows -> UI thread -> AppendChunk
+        _fileTask = SessionFileLoader.Start(path, PlotVM._plot, _fileCts.Token);
     }
 
-    public void DisableFileMode()
+    public void StopFileMode()
     {
-        if (!LoadFileMode) return;
-        LoadFileMode = false;
+        _fileCts?.Cancel();
+        _fileCts = null;
+        _fileTask = null;
+    }
 
-        _loadCts?.Cancel();
-        _loadCts = null;
-        _loadTask = null;
+    public void ToggleTimers()
+    {
+        if (DataCreatorTimer.Enabled)
+        {
+            Stopwatch.Stop();
+            DataCreatorTimer.Stop();
+        }
+        else
+        {
+            Stopwatch.Start();
+            DataCreatorTimer.Start();
+        }
     }
 }
 

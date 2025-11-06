@@ -1,7 +1,4 @@
-﻿using Avalonia;
-using Avalonia.Media;
-
-namespace VargPlot;
+﻿namespace VargPlot;
 
 public class Plot
 {
@@ -20,12 +17,12 @@ public class Plot
     {
     }
 
-    public void AppendChunk(float sampleTime, List<float> samples)
+    public void AppendChunk(Chunk chunk)
     {
-        SampleTimes.Add(sampleTime);
+        SampleTimes.Add(chunk.Time);
         for (int i = 0; i < Waveforms.Count; ++i)
         {
-            Waveforms[i].Samples.Add(samples[i]);
+            Waveforms[i].Samples.Add(chunk.Values[i]);
         }
     }
 }

@@ -35,6 +35,13 @@ public static class PredefinedPens
         new SolidColorBrush(Colors.Magenta),
         new SolidColorBrush(Colors.Lime),
         new SolidColorBrush(Colors.DeepSkyBlue),
+        new SolidColorBrush(Colors.Aquamarine),
+        new SolidColorBrush(Colors.Azure),
+        new SolidColorBrush(Colors.Bisque),
+        new SolidColorBrush(Colors.DarkOrange),
+        new SolidColorBrush(Colors.Goldenrod),
+        new SolidColorBrush(Colors.HotPink),
+        new SolidColorBrush(Colors.Lavender),
     };
 
     // Optional helper to get one by index safely:

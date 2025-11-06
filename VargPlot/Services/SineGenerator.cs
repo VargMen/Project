@@ -39,7 +39,7 @@ public class SineGenerator
         return new Avalonia.Point(x, y);
     }
 
-    public float GetValue(double t)
+    public float GetValue(float t)
     {
         return (float)(Y0 + Amplitude * Math.Sin(Omega * t + Phase));
     }

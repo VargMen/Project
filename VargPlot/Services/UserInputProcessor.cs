@@ -126,18 +126,23 @@ public class UserInputProcessor
         {
             _isAutoScrolling = false;
         }
-        if (e.Key == Key.F)
+        else if (e.Key == Key.F)
         {
             _avaPlot.PlotVM._timeRectChangesHandler.CreateNewTimeRect(_avaPlot.PlotVM._plot.SampleTimes.Last());
         }
-        if (e.Key == Key.OemPlus)
+        else if (e.Key == Key.OemPlus)
         {
             _avaPlot.PlotVM._timeRectChangesHandler.CreateTimeMarker(_avaPlot.PlotVM._plot.SampleTimes.Last(), 1);
         }
-        if (e.Key == Key.OemMinus)
+        else if (e.Key == Key.OemMinus)
         {
             _avaPlot.PlotVM._timeRectChangesHandler.CreateTimeMarker(_avaPlot.PlotVM._plot.SampleTimes.Last(), 0);
         }
+        else if (e.Key == Key.Space)
+        {
+            _avaPlot.ToggleTimers();
+        }
+
     }
 
     public void ProcessKeyUp(KeyEventArgs e)

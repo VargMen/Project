@@ -44,19 +44,19 @@ public sealed class SessionFileRecorder : IDisposable
     /// Writes: time,value0,value1,... as CSV with invariant culture.
     /// Thread-safe.
     /// </summary>
-    public void RecordChunk(double timeSeconds, System.Collections.Generic.IReadOnlyList<float> values)
+    public void RecordChunk(Chunk chunk)
     {
-        if (values is null) return;
+        if (chunk.Values is null) return;
         if (_disposed) return;
 
         // Build CSV line
-        var sb = new StringBuilder(32 + values.Count * 12);
-        sb.Append(timeSeconds.ToString("R", CultureInfo.InvariantCulture));
+        var sb = new StringBuilder(32 + chunk.Values.Count * 12);
+        sb.Append(chunk.Time.ToString("R", CultureInfo.InvariantCulture));
 
-        for (int i = 0; i < values.Count; i++)
+        for (int i = 0; i < chunk.Values.Count; i++)
         {
             sb.Append(',');
-            sb.Append(values[i].ToString("R", CultureInfo.InvariantCulture));
+            sb.Append(chunk.Values[i].ToString("R", CultureInfo.InvariantCulture));
         }
 
         lock (_gate)

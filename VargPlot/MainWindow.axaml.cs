@@ -8,7 +8,7 @@ namespace VargPlot
 {
     public partial class MainWindow : Window
     {
-        private const int SliderCount = 5;
+        private const int SliderCount = 10;
         private const float SliderWidth = 45;
         private const float SliderHeight = 25;
         private const float SidePadding = 30;
@@ -133,7 +133,7 @@ namespace VargPlot
 
             var p = e.GetPosition(SliderCanvas);
             float newTop = (float)p.Y - _dragOffsetY;
-            newTop = Clamp(newTop, 0, (float)Math.Max(0, (float)SliderCanvas.Bounds.Height - SliderHeight));
+            newTop = Math.Clamp(newTop, 0, (float)Math.Max(0, (float)SliderCanvas.Bounds.Height - SliderHeight));
 
             Canvas.SetTop(rect, newTop + centeringAxisOffset);
             VM.plotVM.SetWaveformOffset(_dragIndex, newTop + SliderHeight / 2.0f);
@@ -190,8 +190,5 @@ namespace VargPlot
             _dragIndex = -1;
             e.Handled = true;
         }
-
-        private static float Clamp(float v, float lo, float hi) =>
-            v < lo ? lo : (v > hi ? hi : v);
     }
 }

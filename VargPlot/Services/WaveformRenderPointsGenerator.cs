@@ -13,9 +13,9 @@ public static class WaveformRenderPointsGenerator
             points.Add(new Point(plot.SampleTimes[j] * xScale, waveform.GetTransformedSample(j)));
         }
 
-        if (plot.SampleTimes[endIndex - 1] * xScale < rightPx)
+        if (plot.SampleTimes[endIndex] * xScale < rightPx)
         {
-            points.Add(new Point(plot.SampleTimes[endIndex - 1] * xScale, waveform.YOffset));
+            points.Add(new Point(plot.SampleTimes[endIndex] * xScale, waveform.YOffset));
             points.Add(new Point(rightPx, waveform.YOffset));
         }
         return points;

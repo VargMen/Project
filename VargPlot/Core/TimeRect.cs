@@ -4,7 +4,7 @@ namespace VargPlot;
 
 public class TimeMarker
 {
-    public double time = 0.0;
+    public float time = 0.0f;
     public Pen pen;
     public SolidColorBrush flagColor;
     public Pen flagOutlineColor;
@@ -12,8 +12,8 @@ public class TimeMarker
 
 public class TimeRect
 {
-    public double startTime = 0.0;
-    public double endTime = 0.0;
+    public float startTime = 0.0f;
+    public float endTime = 0.0f;
     public SolidColorBrush fillColor;
     public Pen outlineColor;
     public List<TimeMarker> markers;

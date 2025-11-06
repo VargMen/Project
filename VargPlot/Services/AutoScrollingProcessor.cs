@@ -21,9 +21,9 @@ public class AutoScrollingProcessor
     private float _autoPanVelX = 0.0f;          // velocity for the smooth damp
     private float _lastAnimSec = 0.0f;
 
-    private const float _marginStartPx = 80f;   // start auto-scroll when newest point gets this close
+    private const float _marginStartPx = 60f;   // start auto-scroll when newest point gets this close
     private const float _marginStopPx = 120f;  // use a bit bigger margin to avoid chatter (hysteresis)
-    private const float _smoothTimeSec = 0.15f; // ~100 ms response (tweak)
+    private const float _smoothTimeSec = 0.01f; // ~100 ms response (tweak)
     private const float _maxSpeedPxSec = 5000f; // clamp excessive speeds (tweak)
 
     public void TryAutoScroll()
@@ -90,7 +90,7 @@ public class AutoScrollingProcessor
             float newX = SmoothDamp(_avaPlot.PanX, _autoTargetPanX, ref _autoPanVelX,
                                      _smoothTimeSec, _maxSpeedPxSec, dt);
 
-            if (Math.Abs(newX - _avaPlot.PanX) > 0.01) // tiny deadzone
+            if (Math.Abs(newX - _avaPlot.PanX) > 0.1) // tiny deadzone
             {
                 _avaPlot.UserInputProc._panOffset = new Avalonia.Point(newX, _avaPlot.PanY);
                 _avaPlot.Refresh();

@@ -8,27 +8,38 @@ using System.Collections.Concurrent;
 namespace VargPlot;
 public static class SessionFileLoader
 {
-    // Starts a background task that reads "time,v0,v1,..." and enqueues Chunks.
-    // Call exactly once when you enter LoadFileMode.
-    public static Task Start(string filePath, ConcurrentQueue<Chunk> queue, CancellationToken ct = default)
+    /// <summary>
+    /// Reads CSV "time,v0,v1,..." and appends directly to Plot as fast as possible.
+    /// requestUiRefresh should marshal to UI thread (e.g., () => Dispatcher.UIThread.Post(InvalidateVisual)).
+    /// </summary>
+    public static Task Start(string filePath, Plot plot, CancellationToken ct = default)
     {
-        return Task.Run(async () =>
+        return Task.Run(() =>
         {
-            using var sr = new StreamReader(filePath);
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                          bufferSize: 1 << 20, options: FileOptions.SequentialScan);
+            using var sr = new StreamReader(fs);
+
             string? line;
 
             while (!sr.EndOfStream && !ct.IsCancellationRequested)
             {
-                line = await sr.ReadLineAsync();
+                line = sr.ReadLine();
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 if (line[0] == '#' || line.StartsWith("//", StringComparison.Ordinal)) continue;
 
-                if (TryParse(line, out float t, out List<float> values))
-                    queue.Enqueue(new Chunk { Time = t, Values = values });
+                if (!TryParse(line, out float t, out List<float> values)) continue;
+
+                // Append directly. Guard against concurrent reads in Render().
+                lock (plot) // simplest: use same lock in your Render() when reading plot lists
+                {
+                    plot.AppendChunk(new Chunk(t, values));
+                }
             }
         }, ct);
     }
 
+    // simple parser (fast enough). Expect: time,v0,v1,...
     private static bool TryParse(string line, out float time, out List<float> values)
     {
         time = 0f;

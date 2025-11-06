@@ -112,7 +112,7 @@ public partial class VerticalSlider : TemplatedControl
 
         // Position rectangle so its center is at CenterY
         double rectTop = CenterY - SliderHeight / 2.0;
-        Canvas.SetTop(_partRect, Clamp(rectTop, 0, Math.Max(0, TrackHeight - SliderHeight)) + CenteringAxisOffset);
+        Canvas.SetTop(_partRect, Math.Clamp(rectTop, 0, Math.Max(0, TrackHeight - SliderHeight)) + CenteringAxisOffset);
 
         // Diamond centered at CenterY
         Canvas.SetTop(_partDiamond, CenterY - DiamondSize / 2.0 + CenteringAxisOffset);
@@ -139,7 +139,7 @@ public partial class VerticalSlider : TemplatedControl
 
         var p = e.GetPosition(this);
         double newTop = p.Y - _dragOffsetY;
-        newTop = Clamp(newTop, 0, Math.Max(0, TrackHeight - SliderHeight));
+        newTop = Math.Clamp(newTop, 0, Math.Max(0, TrackHeight - SliderHeight));
         CenterY = newTop + SliderHeight / 2.0;
 
         e.Handled = true;
@@ -186,7 +186,4 @@ public partial class VerticalSlider : TemplatedControl
         e.Pointer.Capture(null);
         e.Handled = true;
     }
-
-    private static double Clamp(double v, double lo, double hi)
-        => v < lo ? lo : (v > hi ? hi : v);
 }

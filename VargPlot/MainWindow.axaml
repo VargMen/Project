@@ -3,17 +3,20 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:VargPlot"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
         x:Class="VargPlot.MainWindow"
         x:DataType="local:MainViewModel"
         Title="Plot">
 
-    <Grid ColumnDefinitions="65, *">
-        <Border Grid.Column="0" Padding="12" Background="#1e1e1e" ZIndex="1">
-            <Canvas x:Name="SliderCanvas" Background="#222" />
-        </Border>
-        <Border Grid.Column="1" ZIndex="0">
-		    <local:AvaPlot/>
-        </Border>
+    <Grid RowDefinitions="Auto, *">
+        <local:Ribbon Grid.Row="0" ZIndex="2"/>
+        <Grid Grid.Row="1" ColumnDefinitions="65, *">
+            <Border Grid.Column="0" Padding="12" Background="#1e1e1e" ZIndex="1">
+                <Canvas x:Name="SliderCanvas" Background="#222"/>
+            </Border>
+            <Border Grid.Column="1" ZIndex="0">
+		        <local:AvaPlot ZIndex="0"/>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -8,6 +8,11 @@ namespace VargPlot;
 
 public class Chunk
 {
+    public Chunk(float time, List<float> values)
+    {
+        Time = time;
+        Values = values;
+    }
     public float Time;
     public List<float> Values;
 }
