@@ -18,7 +18,10 @@ namespace VargPlot;
 
 public class AvaPlot : Avalonia.Controls.Control
 {
-    private bool LoadFileMode = false;
+    private bool LoadFileMode = true;
+    private bool RunWithArduino = false;
+    private SerialReader32 _serialReader;
+
     private CancellationTokenSource? _fileCts;
     private Task? _fileTask;
 
@@ -27,7 +30,8 @@ public class AvaPlot : Avalonia.Controls.Control
     public UserInputProcessor UserInputProc { get; set; }
     public AutoScrollingProcessor AutoScrollProc { get; set; }
 
-    public SessionFileRecorder? _recorder;
+    public SignalValuesRecorder? _signalRecorder;
+    public TimeRegionRecorder? _regionRecorder;
 
     private DispatcherTimer UiTimer;
     private System.Timers.Timer DataCreatorTimer;
@@ -51,6 +55,12 @@ public class AvaPlot : Avalonia.Controls.Control
     {
         base.OnAttachedToVisualTree(e);
 
+        if (RunWithArduino)
+        {
+            _serialReader = new SerialReader32("COM11", 230400);
+            _serialReader.Start();
+        }
+
         this.PlotVM = VM.plotVM;
         _sineGenerators = SineGenerator.CreateMultiple(PlotVM._plot.Waveforms.Count);
 
@@ -72,9 +82,16 @@ public class AvaPlot : Avalonia.Controls.Control
         UiTimer.Start();
 
         if (LoadFileMode)
-            StartFileMode("PlotData/session_20251106_051050.csv");
+        {
+            StartFileMode("Session/signal_values.csv");
+            VM.plotVM._timeRects = TimeRegionReader.Load("Session/time_rects.tr");
+        }
         else
-            _recorder = new SessionFileRecorder("PlotData");
+        {
+            _signalRecorder = new SignalValuesRecorder("Session/signal_values.csv");
+            _regionRecorder = new TimeRegionRecorder("Session/time_rects.tr");
+        }
+            
         Refresh();
     }
 
@@ -98,7 +115,7 @@ public class AvaPlot : Avalonia.Controls.Control
             Debug.WriteLine(XScale);
 
             PlotRenderer.RenderPlot(context, PlotVM._plot, start, end, XScale, rightPx);
-            PlotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(PlotVM._plot.SampleTimes.Last(), XScale);
+            PlotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(PlotVM._plot.SampleTimes.Last(), XScale, _regionRecorder);
             TimeLinesRenderer.RenderTimeLines(context, minViewTime, maxViewTime, GetTimeStep(XScale), XScale, PanY, (float)Bounds.Height);
             TimeRectsRenderer.RenderTimeRects(context, PlotVM._timeRects, minViewTime, maxViewTime, XScale, PanY, (float)Bounds.Height);
             NumbersRenderer.RenderNumbers(context, minViewTime, maxViewTime, 1, XScale, PanY, (float)Bounds.Height);
@@ -115,7 +132,22 @@ public class AvaPlot : Avalonia.Controls.Control
 
     private void OnDataCreatorTick()
     {
-        if (!LoadFileMode)
+        if (LoadFileMode)
+            return;
+
+        if (RunWithArduino)
+        {
+            if (_serialReader.Queue.TryDequeue(out var pkt))
+            {
+                var values = new List<float>(pkt.Values.Length);
+                foreach (var v in pkt.Values)
+                {
+                    values.Add((float)v);
+                }
+                Pending.Enqueue(new Chunk((float)pkt.TimeSec, values));
+            }
+        }
+        else
         {
             float t = (float)Stopwatch.Elapsed.TotalSeconds;
             List<float> values = new List<float>(PlotVM._plot.Waveforms.Count);
@@ -130,9 +162,9 @@ public class AvaPlot : Avalonia.Controls.Control
             Pending.Enqueue(fakeChunk);
         }
 
-        if (!LoadFileMode && Pending.TryDequeue(out var chunk))
+        if (Pending.TryDequeue(out var chunk))
         {
-            _recorder?.RecordChunk(chunk);
+            _signalRecorder?.RecordChunk(chunk);
             PlotVM._plot.AppendChunk(chunk);
         }
     }
