@@ -18,16 +18,13 @@ namespace VargPlot;
 
 public class AvaPlot : Avalonia.Controls.Control
 {
-    private bool LoadFileMode = false;
     private CancellationTokenSource? _fileCts;
     private Task? _fileTask;
-
-    public PlotViewModel PlotVM { get; set; }
     private List<SineGenerator> _sineGenerators { get; set; }
     public UserInputProcessor UserInputProc { get; set; }
     public AutoScrollingProcessor AutoScrollProc { get; set; }
 
-    public SessionFileRecorder? _recorder;
+    public SignalValuesRecorder? _signalRecorder;
 
     private DispatcherTimer UiTimer;
     private System.Timers.Timer DataCreatorTimer;
@@ -41,7 +38,7 @@ public class AvaPlot : Avalonia.Controls.Control
 
     private ConcurrentQueue<Chunk> Pending;
 
-    private MainViewModel VM => (MainViewModel)DataContext!;
+    public MainViewModel VM => (MainViewModel)DataContext!;
 
     public AvaPlot()
     {
@@ -51,9 +48,11 @@ public class AvaPlot : Avalonia.Controls.Control
     {
         base.OnAttachedToVisualTree(e);
 
-        this.PlotVM = VM.plotVM;
-        _sineGenerators = SineGenerator.CreateMultiple(PlotVM._plot.Waveforms.Count);
+        Setup();
+    }
 
+    public void Setup()
+    {
         UserInputProc = new(this);
         AutoScrollProc = new(this);
 
@@ -66,16 +65,32 @@ public class AvaPlot : Avalonia.Controls.Control
 
         DataCreatorTimer = new System.Timers.Timer(50) { AutoReset = true };
         DataCreatorTimer.Elapsed += (_, __) => OnDataCreatorTick();
+        DataCreatorTimer.Start();
 
         Pending = new();
         Stopwatch = new Stopwatch();
+        
         UiTimer.Start();
 
-        if (LoadFileMode)
-            StartFileMode("PlotData/session_20251106_051050.csv");
+        if (VM.plotVM.LoadFileMode)
+        {
+            StartFileMode("PlotData/signal_values.csv");
+            VM.plotVM._timeRects = TimeRegionReader.Load("PlotData/time_rects.tr");
+        }
         else
-            _recorder = new SessionFileRecorder("PlotData");
-        Refresh();
+        {
+            _sineGenerators = SineGenerator.CreateMultiple(VM.plotVM._plot.Waveforms.Count);
+            _signalRecorder = new SignalValuesRecorder("PlotData/signal_values.csv");
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        if (!VM.plotVM.LoadFileMode)
+        {
+            VM.plotVM._timeRegionRecorder.Dispose();
+        }
     }
 
     public override void Render(DrawingContext context)
@@ -83,24 +98,24 @@ public class AvaPlot : Avalonia.Controls.Control
         context.FillRectangle(Brushes.Black, Bounds);
         context.PushTransform(Matrix.CreateTranslation(Pan));
 
-        if (PlotRenderer.HasData(PlotVM._plot))
+        if (PlotRenderer.HasData(VM.plotVM._plot))
         {
             float minX = -PanX;
             float maxX = -PanX + (float)Bounds.Width;
 
-            var (start, end) = GetVisibleIndexRange(PlotVM._plot, minX / XScale, maxX / XScale);
+            var (start, end) = GetVisibleIndexRange(VM.plotVM._plot, minX / XScale, maxX / XScale);
             if (end - start < 1)
                 return;
 
-            float minViewTime = PlotVM._plot.SampleTimes[start];
-            float maxViewTime = PlotVM._plot.SampleTimes[end];
+            float minViewTime = VM.plotVM._plot.SampleTimes[start];
+            float maxViewTime = VM.plotVM._plot.SampleTimes[end];
             float rightPx = (float)(-PanX + Bounds.Width * XScale);
-            Debug.WriteLine(XScale);
+            //Debug.WriteLine(XScale);
 
-            PlotRenderer.RenderPlot(context, PlotVM._plot, start, end, XScale, rightPx);
-            PlotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(PlotVM._plot.SampleTimes.Last(), XScale);
+            PlotRenderer.RenderPlot(context, VM.plotVM._plot, start, end, XScale, rightPx);
+            VM.plotVM._timeRectChangesHandler.UpdateCurrentTimeRectEndTime(VM.plotVM._plot.SampleTimes.Last(), XScale, VM.plotVM._timeRegionRecorder);
             TimeLinesRenderer.RenderTimeLines(context, minViewTime, maxViewTime, GetTimeStep(XScale), XScale, PanY, (float)Bounds.Height);
-            TimeRectsRenderer.RenderTimeRects(context, PlotVM._timeRects, minViewTime, maxViewTime, XScale, PanY, (float)Bounds.Height);
+            TimeRectsRenderer.RenderTimeRects(context, VM.plotVM._timeRects, minViewTime, maxViewTime, XScale, PanY, (float)Bounds.Height);
             NumbersRenderer.RenderNumbers(context, minViewTime, maxViewTime, 1, XScale, PanY, (float)Bounds.Height);
         }
     }
@@ -115,10 +130,10 @@ public class AvaPlot : Avalonia.Controls.Control
 
     private void OnDataCreatorTick()
     {
-        if (!LoadFileMode)
+        if (!VM.plotVM.LoadFileMode)
         {
             float t = (float)Stopwatch.Elapsed.TotalSeconds;
-            List<float> values = new List<float>(PlotVM._plot.Waveforms.Count);
+            List<float> values = new List<float>(VM.plotVM._plot.Waveforms.Count);
 
             foreach (var sineGenerator in _sineGenerators)
             {
@@ -130,10 +145,10 @@ public class AvaPlot : Avalonia.Controls.Control
             Pending.Enqueue(fakeChunk);
         }
 
-        if (!LoadFileMode && Pending.TryDequeue(out var chunk))
+        if (!VM.plotVM.LoadFileMode && Pending.TryDequeue(out var chunk))
         {
-            _recorder?.RecordChunk(chunk);
-            PlotVM._plot.AppendChunk(chunk);
+            _signalRecorder?.RecordChunk(chunk);
+            VM.plotVM._plot.AppendChunk(chunk);
         }
     }
 
@@ -214,7 +229,7 @@ public class AvaPlot : Avalonia.Controls.Control
         _fileCts = new CancellationTokenSource();
 
         // stream rows -> UI thread -> AppendChunk
-        _fileTask = SessionFileLoader.Start(path, PlotVM._plot, _fileCts.Token);
+        _fileTask = SessionFileLoader.Start(path, VM.plotVM._plot, _fileCts.Token);
     }
 
     public void StopFileMode()

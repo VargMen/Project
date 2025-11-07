@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VargPlot.Services;
 
 namespace VargPlot;
 
@@ -19,7 +20,7 @@ public class TimeRectChangesHandler
         _timeRects = timeRects;
     }
 
-    public void UpdateCurrentTimeRectEndTime(float currentTime, float xScale)
+    public void UpdateCurrentTimeRectEndTime(float currentTime, float xScale, TimeRegionRecorder recorder)
     {
         if (_isTimeRectBeingDrawn && _timeRects.Count > 0)
         {
@@ -33,6 +34,9 @@ public class TimeRectChangesHandler
             if (_timeRects[_timeRects.Count - 1].endTime - _timeRects[_timeRects.Count - 1].startTime >= kRedRectDuration)
             {
                 _isRedRectBeingDrawn = false;
+                int lastIndex = _timeRects.Count - 1;
+                recorder.RecordTimeRect(_timeRects[lastIndex - 1]);
+                recorder.RecordTimeRect(_timeRects[lastIndex]);
             }
         }
     }

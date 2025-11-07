@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace VargPlot;
 
-public sealed class SessionFileRecorder : IDisposable
+public sealed class SignalValuesRecorder : IDisposable
 {
     private readonly object _gate = new();
     private readonly StreamWriter _writer;
@@ -16,23 +16,10 @@ public sealed class SessionFileRecorder : IDisposable
     /// Creates a new CSV recorder. If <paramref name="filePath"/> is a directory,
     /// a timestamped file is created inside it. If it's a file path, it’s used as-is.
     /// </summary>
-    public SessionFileRecorder(string filePathOrDirectory, string? filePrefix = "session")
+    public SignalValuesRecorder(string filePath)
     {
-        string path = filePathOrDirectory;
-
-        if (Directory.Exists(filePathOrDirectory) || Path.GetExtension(filePathOrDirectory) == string.Empty)
-        {
-            Directory.CreateDirectory(filePathOrDirectory);
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            path = Path.Combine(filePathOrDirectory, $"{filePrefix}_{stamp}.csv");
-        }
-        else
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        }
-
         // Auto-flush is false for performance; we Flush() on Dispose.
-        _writer = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, FileOptions.SequentialScan))
+        _writer = new StreamWriter(new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, FileOptions.SequentialScan))
         {
             AutoFlush = false,
             NewLine = "\n"
